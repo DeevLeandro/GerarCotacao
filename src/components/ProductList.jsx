@@ -1,6 +1,7 @@
 /**
  * components/ProductList.jsx
  * Lista editável de produtos da proposta.
+ * ALTERAÇÃO: Adicionado campo "Condition" (texto livre: NEW, OHC, USED, etc.)
  */
 import { genId } from '../utils/helpers';
 
@@ -11,7 +12,7 @@ export default function ProductList({ products = [], onChange }) {
   const remove = id => onChange(products.filter(p => p.id !== id));
 
   const add = () =>
-    onChange([...products, { id: genId(), partNumber: '', description: '', qty: 1 }]);
+    onChange([...products, { id: genId(), partNumber: '', description: '', qty: 1, condition: '' }]);
 
   return (
     <div>
@@ -19,7 +20,7 @@ export default function ProductList({ products = [], onChange }) {
         <div key={p.id} className="product-item fade-in">
           <div style={{ flex: 1 }}>
             <div className="product-num">#{String(i + 1).padStart(2, '0')}</div>
-            <div className="product-fields">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 70px 110px', gap: 10 }} className="product-fields">
               <div className="form-group">
                 <label>Part / Ref.</label>
                 <input
@@ -43,6 +44,14 @@ export default function ProductList({ products = [], onChange }) {
                   min="1"
                   value={p.qty}
                   onChange={e => update(p.id, 'qty', e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>Condition</label>
+                <input
+                  value={p.condition || ''}
+                  onChange={e => update(p.id, 'condition', e.target.value)}
+                  placeholder="NEW / OHC / USED"
                 />
               </div>
             </div>

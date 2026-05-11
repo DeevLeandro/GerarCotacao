@@ -1,6 +1,7 @@
 /**
  * pages/EditorPage.jsx
  * Editor principal com abas: Produtos | Custos | Importar | Cliente
+ * ADICIONADO: campos FOB e Customer Ref # na aba Cliente
  */
 import { useState } from 'react';
 import ProductList    from '../components/ProductList';
@@ -35,10 +36,9 @@ export default function EditorPage({
   const totalBRL = getTotalBRL(lines, fx);
   const totalUSD = getTotalUSD(lines);
 
-  // Recebe linhas sugeridas pelo ImportParser e aplica na calculadora
   const handleCostSuggestion = (suggestedLines) => {
     onLinesChange(suggestedLines);
-    setTab('costs'); // leva direto pra aba de custos
+    setTab('costs');
   };
 
   return (
@@ -139,8 +139,16 @@ export default function EditorPage({
                 <input type="number" value={proposal.validityDays || 10} onChange={e => set('validityDays', e.target.value)} />
               </div>
               <div className="form-group">
-                <label>Condições de Pagamento</label>
-                <input value={proposal.paymentTerms || ''} onChange={e => set('paymentTerms', e.target.value)} placeholder="Ex: 50% adiantado, 50% na entrega" />
+                <label>Terms (Condições de Pagamento)</label>
+                <input value={proposal.paymentTerms || ''} onChange={e => set('paymentTerms', e.target.value)} placeholder="Ex: Prepaid ACH" />
+              </div>
+              <div className="form-group">
+                <label>FOB</label>
+                <input value={proposal.fob || ''} onChange={e => set('fob', e.target.value)} placeholder="Ex: EXWKS LUCAS" />
+              </div>
+              <div className="form-group">
+                <label>Customer Ref. #</label>
+                <input value={proposal.customerRef || ''} onChange={e => set('customerRef', e.target.value)} placeholder="Ex: PT-PST" />
               </div>
               <div className="form-group">
                 <label>Prazo de Entrega</label>

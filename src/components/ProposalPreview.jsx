@@ -1,21 +1,22 @@
 /**
  * components/ProposalPreview.jsx
- * Layout fiel ao PDF de referência (Boaz Aviation – Proforma Invoice/Quote)
+ * Layout fiel ao PDF de referência (Boaz Aviation – Sales Proposal)
  *
  * ESTRUTURA:
- * - Cabeçalho: Logo/nome + bloco "Proforma Invoice / Quote" + tabela Date/Quote#
- * - Bloco endereço cliente (box com borda)
- * - Tabela Terms / FOB / Customer Ref # com linhas
+ * - Cabeçalho: Logo oficial + "Sales Proposal" + tabela Date/Quote#
+ * - Bloco endereço cliente + dados empresa
+ * - Tabela Terms / FOB / Customer Ref # (igual ao PDF de referência)
+ * - Linha de contato (Phone / Email)
  * - Tabela de itens: Part Number | Description | Qty | Condition
- * - Rodapé com total USD
- * - Última página: observações + condições + validade
+ * - Total apenas em USD
+ * - Rodapé com validade + email + telefone em TODAS as páginas
+ * - Última página: observações + condições comerciais
  */
 
 import { formatDate, addDays } from '../utils/helpers';
 
 const ITEMS_PER_PAGE = 18;
 
-// ─── Formatadores ──────────────────────────────────────────────────────────────
 function fmtUSD(value) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -25,20 +26,10 @@ function fmtUSD(value) {
   }).format(value);
 }
 
-function fmtBRL(value) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-// ─── Estilos base (inline, para html2canvas) ───────────────────────────────────
 const PAGE_STYLE = {
-  width: '215.9mm',        // Letter width
-  minHeight: '279.4mm',    // Letter height
-  padding: '14mm 14mm 16mm 14mm',
+  width: '215.9mm',
+  minHeight: '279.4mm',
+  padding: '14mm 14mm 20mm 14mm',
   boxSizing: 'border-box',
   backgroundColor: '#ffffff',
   fontFamily: "'Arial', 'Helvetica', sans-serif",
@@ -47,7 +38,33 @@ const PAGE_STYLE = {
   position: 'relative',
 };
 
-// ─── Sub-componente: Cabeçalho (igual ao PDF) ──────────────────────────────────
+// ─── Rodapé — igual em TODAS as páginas ───────────────────────────────────────
+function PageFooter({ company, proposal, now, validity }) {
+  const validUntil = addDays(now, validity);
+  return (
+    <div style={{
+      position: 'absolute',
+      bottom: '8mm',
+      left: '14mm',
+      right: '14mm',
+      borderTop: '1px solid #dddddd',
+      paddingTop: '3mm',
+      fontSize: '7.5pt',
+      color: '#888888',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'flex-end',
+      gap: 8,
+    }}>
+      <span>This proposal is valid until {formatDate(validUntil)}.</span>
+      <span style={{ textAlign: 'right' }}>
+        {[company?.name, company?.email, company?.phone].filter(Boolean).join(' · ')}
+      </span>
+    </div>
+  );
+}
+
+// ─── Cabeçalho ────────────────────────────────────────────────────────────────
 function PageHeader({ company, proposal, now }) {
   return (
     <div style={{
@@ -56,62 +73,41 @@ function PageHeader({ company, proposal, now }) {
       alignItems: 'flex-start',
       marginBottom: '8mm',
     }}>
-      {/* Logo / Nome empresa */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6mm' }}>
-        {/* Ícone BOAZ estilo do PDF */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          lineHeight: 1,
-        }}>
-          <div style={{
-            fontSize: '28pt',
-            fontWeight: '900',
-            color: '#1a1a1a',
-            letterSpacing: '-1px',
-            lineHeight: 1,
-          }}>
-            {/* Simula o logo bold tipo "BOAZ" do PDF */}
+      {/* Logo oficial */}
+      <div>
+        <img
+          src="/images/logo.png"
+          alt={company?.name || 'Logo'}
+          style={{
+            height: '28mm',
+            maxWidth: '72mm',
+            objectFit: 'contain',
+            display: 'block',
+          }}
+          onError={e => {
+            e.currentTarget.style.display = 'none';
+            if (e.currentTarget.nextSibling) {
+              e.currentTarget.nextSibling.style.display = 'flex';
+            }
+          }}
+        />
+        {/* Fallback texto */}
+        <div style={{ display: 'none', flexDirection: 'column', lineHeight: 1 }}>
+          <div style={{ fontSize: '28pt', fontWeight: '900', color: '#1a1a1a', letterSpacing: '-1px', lineHeight: 1 }}>
             {company?.logoText || 'BOAZ'}
           </div>
-          <div style={{
-            fontSize: '6pt',
-            color: '#555555',
-            letterSpacing: '1.5px',
-            textTransform: 'uppercase',
-            marginTop: '1mm',
-          }}>
+          <div style={{ fontSize: '6pt', color: '#555555', letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: '1mm' }}>
             {company?.sub || 'aviation'}
           </div>
         </div>
-        <div style={{
-          borderLeft: '1px solid #cccccc',
-          paddingLeft: '6mm',
-          lineHeight: 1.4,
-        }}>
-          <div style={{ fontSize: '6.5pt', color: '#555555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>AERONAUTICAL</div>
-          <div style={{ fontSize: '6.5pt', color: '#555555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>TECHNOLOGY</div>
-          <div style={{ fontSize: '6.5pt', color: '#555555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>SOLUTIONS</div>
-        </div>
       </div>
 
-      {/* Título + Data/Quote# */}
+      {/* Título + tabela Date / Quote# */}
       <div style={{ textAlign: 'right' }}>
-        <div style={{
-          fontSize: '18pt',
-          fontWeight: '700',
-          color: '#1a1a1a',
-          marginBottom: '3mm',
-        }}>
-          Proforma Invoice / Quote
+        <div style={{ fontSize: '18pt', fontWeight: '700', color: '#1a1a1a', marginBottom: '3mm' }}>
+          Sales Proposal
         </div>
-        {/* Tabela Date | Quote# */}
-        <table style={{
-          borderCollapse: 'collapse',
-          marginLeft: 'auto',
-          fontSize: '8pt',
-        }}>
+        <table style={{ borderCollapse: 'collapse', marginLeft: 'auto', fontSize: '8pt' }}>
           <thead>
             <tr style={{ backgroundColor: '#f0f0f0' }}>
               <th style={thStyle}>Date</th>
@@ -130,14 +126,10 @@ function PageHeader({ company, proposal, now }) {
   );
 }
 
-// ─── Sub-componente: Bloco cliente + Fornecedor ────────────────────────────────
+// ─── Bloco endereço cliente + empresa ─────────────────────────────────────────
 function AddressBlock({ proposal, company }) {
   return (
-    <div style={{
-      display: 'flex',
-      gap: '6mm',
-      marginBottom: '6mm',
-    }}>
+    <div style={{ display: 'flex', gap: '6mm', marginBottom: '6mm' }}>
       {/* Caixa cliente */}
       <div style={{
         border: '1px solid #bbbbbb',
@@ -157,55 +149,57 @@ function AddressBlock({ proposal, company }) {
         )}
       </div>
 
-      {/* Dados da empresa (Boaz) */}
-      <div style={{
-        width: '50%',
-        fontSize: '8.5pt',
-        lineHeight: 1.6,
-        paddingTop: '1mm',
-      }}>
+      {/* Dados da empresa */}
+      <div style={{ width: '50%', fontSize: '8.5pt', lineHeight: 1.6, paddingTop: '1mm' }}>
         <div style={{ fontWeight: '700' }}>{company?.name || 'Boaz Aeronautical Technical Solutions'}</div>
         {company?.contactName && <div>{company.contactName}</div>}
-        {company?.city && <div>{company.city}</div>}
-        {company?.country && <div>{company.country}</div>}
-        {company?.address && <div style={{ marginTop: '2mm' }}>{company.address}</div>}
+        {company?.city        && <div>{company.city}</div>}
+        {company?.country     && <div>{company.country}</div>}
+        {company?.address     && <div style={{ marginTop: '2mm' }}>{company.address}</div>}
       </div>
     </div>
   );
 }
 
-// ─── Sub-componente: Linha Terms/FOB/CustomerRef ───────────────────────────────
+// ─── Linha Terms / FOB / Customer Ref # ──────────────────────────────────────
+// No PDF de referência esta tabela fica no canto direito da página,
+// alinhada abaixo da tabela Date/Quote#, com a metade esquerda vazia.
 function TermsRow({ proposal }) {
   return (
-    <table style={{
-      width: '100%',
-      borderCollapse: 'collapse',
+    <div style={{
+      display: 'flex',
+      justifyContent: 'flex-end',
       marginBottom: '3mm',
-      fontSize: '8.5pt',
     }}>
-      <thead>
-        <tr style={{ backgroundColor: '#f0f0f0' }}>
-          <th style={{ ...thStyle, width: '30%', textAlign: 'center' }}>Terms</th>
-          <th style={{ ...thStyle, width: '30%', borderLeft: '1px solid #cccccc', textAlign: 'center' }}>FOB</th>
-          <th style={{ ...thStyle, width: '40%', borderLeft: '1px solid #cccccc', textAlign: 'center' }}>Customer Ref. #</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style={{ ...tdStyle, textAlign: 'center' }}>{proposal.paymentTerms || 'Prepaid ACH'}</td>
-          <td style={{ ...tdStyle, borderLeft: '1px solid #cccccc', textAlign: 'center' }}>
-            {proposal.fob || 'EXWKS LUCAS'}
-          </td>
-          <td style={{ ...tdStyle, borderLeft: '1px solid #cccccc', textAlign: 'center' }}>
-            {proposal.customerRef || '—'}
-          </td>
-        </tr>
-      </tbody>
-    </table>
+      <table style={{
+        width: '50%',
+        borderCollapse: 'collapse',
+        fontSize: '8.5pt',
+      }}>
+        <thead>
+          <tr style={{ backgroundColor: '#f0f0f0' }}>
+            <th style={{ ...thStyle, width: '30%', textAlign: 'center' }}>Terms</th>
+            <th style={{ ...thStyle, width: '30%', borderLeft: '1px solid #cccccc', textAlign: 'center' }}>FOB</th>
+            <th style={{ ...thStyle, width: '40%', borderLeft: '1px solid #cccccc', textAlign: 'center' }}>Customer Ref. #</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={{ ...tdStyle, textAlign: 'center' }}>{proposal.paymentTerms || 'Prepaid ACH'}</td>
+            <td style={{ ...tdStyle, borderLeft: '1px solid #cccccc', textAlign: 'center' }}>
+              {proposal.fob || 'EXWKS LUCAS'}
+            </td>
+            <td style={{ ...tdStyle, borderLeft: '1px solid #cccccc', textAlign: 'center' }}>
+              {proposal.customerRef || '—'}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   );
 }
 
-// ─── Sub-componente: Contato (linha abaixo de Terms no PDF original) ───────────
+// ─── Linha de contato Phone / Email (abaixo do Terms, igual ao PDF) ───────────
 function ContactRow({ company }) {
   if (!company?.phone && !company?.email) return null;
   return (
@@ -222,7 +216,7 @@ function ContactRow({ company }) {
   );
 }
 
-// ─── Sub-componente: Cabeçalho da tabela de itens ─────────────────────────────
+// ─── Cabeçalho da tabela de itens ─────────────────────────────────────────────
 function ItemTableHead() {
   return (
     <thead>
@@ -236,7 +230,7 @@ function ItemTableHead() {
   );
 }
 
-// ─── Sub-componente: Linha de item ─────────────────────────────────────────────
+// ─── Linha de item ─────────────────────────────────────────────────────────────
 function ItemRow({ product, isLast }) {
   return (
     <tr style={{ borderBottom: isLast ? 'none' : '1px solid #e8e8e8' }}>
@@ -257,15 +251,9 @@ function ItemRow({ product, isLast }) {
         borderRight: '1px solid #cccccc',
       }}>
         <div style={{ fontWeight: '600' }}>{product.description}</div>
-        {product.alternate && (
-          <div style={{ color: '#555555', fontSize: '7.5pt' }}>{product.alternate}</div>
-        )}
-        {product.hsCode && (
-          <div style={{ color: '#777777', fontSize: '7pt' }}>HS Code {product.hsCode} ECCN {product.eccn || ''}</div>
-        )}
-        {product.netWeight && (
-          <div style={{ color: '#777777', fontSize: '7pt' }}>Net weight {product.netWeight}</div>
-        )}
+        {product.alternate && <div style={{ color: '#555555', fontSize: '7.5pt' }}>{product.alternate}</div>}
+        {product.hsCode    && <div style={{ color: '#777777', fontSize: '7pt' }}>HS Code {product.hsCode} ECCN {product.eccn || ''}</div>}
+        {product.netWeight && <div style={{ color: '#777777', fontSize: '7pt' }}>Net weight {product.netWeight}</div>}
       </td>
       <td style={{
         padding: '1.5mm 2mm',
@@ -288,26 +276,28 @@ function ItemRow({ product, isLast }) {
   );
 }
 
-// ─── Sub-componente: Linha de Total ───────────────────────────────────────────
-function TotalRow({ label, value }) {
+// ─── Linha de Total ───────────────────────────────────────────────────────────
+function TotalRow({ value }) {
   return (
     <tr>
       <td colSpan={3} style={{
-        padding: '2mm 2mm',
+        padding: '3mm 2mm',
         textAlign: 'right',
-        fontSize: '8.5pt',
-        color: '#555555',
-        borderTop: '1px solid #cccccc',
+        fontSize: '12pt',
+        fontWeight: '700',
+        color: '#1a1a1a',
+        borderTop: '2px solid #aaaaaa',
         borderRight: '1px solid #cccccc',
       }}>
-        {label}
+        Total
       </td>
       <td style={{
-        padding: '2mm 3mm',
+        padding: '3mm 3mm',
         textAlign: 'right',
-        fontSize: '9pt',
+        fontSize: '12pt',
         fontWeight: '700',
-        borderTop: '1px solid #cccccc',
+        color: '#1a1a1a',
+        borderTop: '2px solid #aaaaaa',
       }}>
         {value}
       </td>
@@ -342,38 +332,32 @@ const tdMetaStyle = {
 
 // ─── Componente principal ──────────────────────────────────────────────────────
 export default function ProposalPreview({ proposal, company, totalBRL, adminMode = false }) {
-  const now = new Date();
+  const now      = new Date();
   const validity = parseInt(proposal.validityDays) || 10;
-  const validUntil = addDays(now, validity);
   const products = (proposal.products || []).filter(p => p.description?.trim());
 
-  const hasValidTotal = totalBRL !== null && totalBRL !== undefined && totalBRL > 0;
-  const totalUSD = hasValidTotal ? totalBRL / (parseFloat(proposal.fx) || 5.20) : null;
+  // Apenas USD no PDF
+  const hasValidTotal     = totalBRL !== null && totalBRL !== undefined && totalBRL > 0;
+  const totalUSD          = hasValidTotal ? totalBRL / (parseFloat(proposal.fx) || 5.20) : null;
   const totalUSDFormatted = totalUSD ? fmtUSD(totalUSD) : '—';
-  const totalBRLFormatted = hasValidTotal ? fmtBRL(totalBRL) : '—';
 
-  // Divide produtos em páginas
   const pages = [];
   for (let i = 0; i < products.length; i += ITEMS_PER_PAGE) {
     pages.push(products.slice(i, i + ITEMS_PER_PAGE));
   }
-  if (pages.length === 0) pages.push([]); // ao menos 1 página
+  if (pages.length === 0) pages.push([]);
 
   const defaultConditions = [
-    `Pagamento: ${proposal.paymentTerms || 'Conforme acordo comercial'}`,
-    `Prazo de entrega estimado: ${proposal.deliveryDays || '30–45 dias úteis após confirmação'}`,
-    `Proposta válida por ${validity} dias corridos`,
-    'Valores sujeitos à disponibilidade de estoque e variação cambial',
-    'Todos os itens possuem certificado de origem e rastreabilidade (FAA/EASA)',
+    `Payment: ${proposal.paymentTerms || 'As per commercial agreement'}`,
+    `Estimated delivery time: ${proposal.deliveryDays || '30–45 business days after confirmation'}`,
+    `Proposal valid for ${validity} calendar days`,
+    'Values subject to stock availability and exchange rate fluctuation',
+    'All items include certificate of origin and traceability (FAA/EASA)',
   ].map(l => `• ${l}`).join('\n');
 
-  const totalPages = pages.length + 1; // +1 para página final de condições
-
   return (
-    <div id="pdf-document" style={{
-      backgroundColor: '#e8e8e8',
-      padding: '10px',
-    }}>
+    <div id="pdf-document" style={{ backgroundColor: '#e8e8e8', padding: '10px' }}>
+
       {/* ── Páginas de itens ── */}
       {pages.map((pageItems, pageIdx) => {
         const isLastItemPage = pageIdx === pages.length - 1;
@@ -381,11 +365,7 @@ export default function ProposalPreview({ proposal, company, totalBRL, adminMode
           <div
             key={pageIdx}
             className="pdf-page"
-            style={{
-              ...PAGE_STYLE,
-              pageBreakAfter: 'always',
-              marginBottom: '10px',
-            }}
+            style={{ ...PAGE_STYLE, marginBottom: '10px' }}
           >
             <PageHeader company={company} proposal={proposal} now={now} />
             <AddressBlock proposal={proposal} company={company} />
@@ -408,20 +388,55 @@ export default function ProposalPreview({ proposal, company, totalBRL, adminMode
                     isLast={i === pageItems.length - 1 && isLastItemPage}
                   />
                 ))}
-                {/* Linha de total apenas na última página de itens */}
+                {/* Total somente na última página de itens — apenas USD */}
                 {isLastItemPage && (
-                  <TotalRow
-                    label="Total"
-                    value={`USD ${totalUSDFormatted.replace('$', '').replace('US', '')}`}
-                  />
+                  <TotalRow value={totalUSDFormatted} />
                 )}
               </tbody>
             </table>
 
+            {/* ── Condições na mesma página que os últimos itens ── */}
+            {isLastItemPage && (
+              <div style={{ marginTop: '8mm' }}>
+
+                {/* Observações do cliente */}
+                {proposal.observations?.trim() && (
+                  <div style={{ marginBottom: '6mm' }}>
+                    <div style={{
+                      fontSize: '9pt', fontWeight: '700',
+                      borderBottom: '1px solid #cccccc',
+                      paddingBottom: '1mm', marginBottom: '3mm',
+                      textTransform: 'uppercase', letterSpacing: '0.3px',
+                    }}>
+                      Notes to Customer
+                    </div>
+                    <div style={{ fontSize: '8.5pt', lineHeight: 1.5, whiteSpace: 'pre-wrap', color: '#333333' }}>
+                      {proposal.observations}
+                    </div>
+                  </div>
+                )}
+
+                {/* Condições comerciais */}
+                <div style={{ marginBottom: '10mm' }}>
+                  <div style={{
+                    fontSize: '9pt', fontWeight: '700',
+                    borderBottom: '1px solid #cccccc',
+                    paddingBottom: '1mm', marginBottom: '3mm',
+                    textTransform: 'uppercase', letterSpacing: '0.3px',
+                  }}>
+                    Commercial Terms
+                  </div>
+                  <div style={{ fontSize: '8.5pt', lineHeight: 1.6, whiteSpace: 'pre-wrap', color: '#333333' }}>
+                    {proposal.conditions?.trim() || defaultConditions}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Número de página */}
             <div style={{
               position: 'absolute',
-              bottom: '8mm',
+              bottom: '14mm',
               left: 0,
               right: 0,
               textAlign: 'center',
@@ -430,110 +445,13 @@ export default function ProposalPreview({ proposal, company, totalBRL, adminMode
             }}>
               Page {pageIdx + 1}
             </div>
+
+            {/* Rodapé em TODAS as páginas */}
+            <PageFooter company={company} proposal={proposal} now={now} validity={validity} />
           </div>
         );
       })}
 
-      {/* ── Página final: observações + condições ── */}
-      <div
-        className="pdf-page"
-        style={{
-          ...PAGE_STYLE,
-          marginBottom: '10px',
-        }}
-      >
-        <PageHeader company={company} proposal={proposal} now={now} />
-
-        {/* Total destacado */}
-        {hasValidTotal && (
-          <div style={{
-            marginBottom: '8mm',
-            padding: '3mm 4mm',
-            backgroundColor: '#f8f8f8',
-            border: '1px solid #dddddd',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}>
-            <div style={{ fontSize: '9pt', color: '#555555' }}>TOTAL DA PROPOSTA</div>
-            <div>
-              <div style={{ fontSize: '14pt', fontWeight: '700', textAlign: 'right' }}>
-                {totalBRLFormatted}
-              </div>
-              <div style={{ fontSize: '8pt', color: '#777777', textAlign: 'right' }}>
-                USD {totalUSDFormatted}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Observações */}
-        {proposal.observations?.trim() && (
-          <div style={{ marginBottom: '8mm' }}>
-            <div style={{
-              fontSize: '9pt',
-              fontWeight: '700',
-              borderBottom: '1px solid #cccccc',
-              paddingBottom: '1mm',
-              marginBottom: '3mm',
-              textTransform: 'uppercase',
-              letterSpacing: '0.3px',
-            }}>
-              Observações para o Cliente
-            </div>
-            <div style={{
-              fontSize: '8.5pt',
-              lineHeight: 1.5,
-              whiteSpace: 'pre-wrap',
-              color: '#333333',
-            }}>
-              {proposal.observations}
-            </div>
-          </div>
-        )}
-
-        {/* Condições comerciais */}
-        <div style={{ marginBottom: '10mm' }}>
-          <div style={{
-            fontSize: '9pt',
-            fontWeight: '700',
-            borderBottom: '1px solid #cccccc',
-            paddingBottom: '1mm',
-            marginBottom: '3mm',
-            textTransform: 'uppercase',
-            letterSpacing: '0.3px',
-          }}>
-            Condições Comerciais
-          </div>
-          <div style={{
-            fontSize: '8.5pt',
-            lineHeight: 1.6,
-            whiteSpace: 'pre-wrap',
-            color: '#333333',
-          }}>
-            {proposal.conditions?.trim() || defaultConditions}
-          </div>
-        </div>
-
-        {/* Rodapé com validade */}
-        <div style={{
-          position: 'absolute',
-          bottom: '8mm',
-          left: '14mm',
-          right: '14mm',
-          borderTop: '1px solid #dddddd',
-          paddingTop: '3mm',
-          fontSize: '7.5pt',
-          color: '#888888',
-          display: 'flex',
-          justifyContent: 'space-between',
-        }}>
-          <span>Esta proposta é válida até {formatDate(validUntil)}.</span>
-          <span>
-            {[company?.name, company?.email, company?.phone].filter(Boolean).join(' · ')}
-          </span>
-        </div>
-      </div>
     </div>
   );
 }
