@@ -183,14 +183,11 @@ export function getLineUSD(line, allLines) {
     return valorAduaneiro * pct / 100;
   }
 
-  // Percentual genérico: calcula sobre a soma das outras linhas com valor fixo
+  // Percentual genérico: usa Valor Aduaneiro (Mercadoria + Frete) como base
+  // NUNCA soma todas as linhas — evita incluir armazenagem, taxas, etc.
   if (pct > 0) {
-    const base = allLines.reduce((sum, l) => {
-      if (l.id === line.id) return sum;
-      const lUSD = parseFloat(l.usd) || 0;
-      return sum + lUSD;
-    }, 0);
-    return base * pct / 100;
+    const valorAduaneiro = getValorAduaneiroUSD(allLines);
+    return valorAduaneiro * pct / 100;
   }
 
   return 0;
