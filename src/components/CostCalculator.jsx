@@ -1,6 +1,7 @@
 /**
  * components/CostCalculator.jsx
- * CALCULADORA COM AS REGRAS CORRETAS
+ * CORREÇÃO: IOF e ICMS Saída agora permitem digitar valor fixo em USD (FIX)
+ * Quando USD fixo está preenchido, ele tem prioridade sobre o % calculado.
  */
 
 import { genId } from '../utils/helpers';
@@ -30,7 +31,6 @@ export default function CostCalculator({
   const totalBRL = getTotalBRL(lines, fx);
   const fxNum = parseFloat(fx) || 1;
   
-  // Cálculos especiais
   const valorAduaneiroUSD = getValorAduaneiroUSD(lines);
   const valorAduaneiroBRL = valorAduaneiroUSD * fxNum;
   const valorAgregadoUSD = getValorAgregadoUSD(lines);
@@ -74,10 +74,10 @@ export default function CostCalculator({
       }}>
         <strong>📐 Regras de Cálculo:</strong><br />
         • <strong>Valor Aduaneiro</strong> = Mercadoria + Frete Internacional = <strong>{fmtUSD(valorAduaneiroUSD)}</strong><br />
-        • <strong>IOF</strong> = 3.5% sobre Frete = <strong>{fmtUSD(iofUSD)}</strong><br />
+        • <strong>IOF</strong> = 3.5% sobre Frete (ou valor fixo se digitado) = <strong>{fmtUSD(iofUSD)}</strong><br />
         • <strong>Base ICMS Entrada, IPI, PIS, COFINS, Imp. Importação</strong> = Valor Aduaneiro<br />
         • <strong>Valor Agregado</strong> = Total (sem ICMS Saída) - Valor Aduaneiro = <strong>{fmtUSD(valorAgregadoUSD)}</strong><br />
-        • <strong>ICMS Saída</strong> = 17% sobre Valor Agregado = <strong>{fmtUSD(icmsSaidaUSD)}</strong>
+        • <strong>ICMS Saída</strong> = 17% sobre Valor Agregado (ou valor fixo se digitado) = <strong>{fmtUSD(icmsSaidaUSD)}</strong>
       </div>
 
       {/* Câmbio */}
@@ -136,6 +136,11 @@ export default function CostCalculator({
             const valUSD = getLineUSD(l, lines);
             const valBRL = valUSD * fxNum;
             const isSpecial = l.name?.toLowerCase().includes('icms') || l.name?.toLowerCase().includes('iof');
+            const isIOFLine = l.name?.toLowerCase().includes('iof');
+            const isICMSSaidaLine = l.name?.toLowerCase().includes('icms saída');
+            
+            // Mostra dica quando valor é calculado automaticamente (sem USD fixo)
+            const isAutoCalculated = (isIOFLine || isICMSSaidaLine) && !l.usd;
             
             return (
               <tr key={l.id} style={{ 
@@ -150,16 +155,50 @@ export default function CostCalculator({
                     style={{ width: '100%', fontWeight: isSpecial ? 500 : 'normal' }}
                   />
                 </td>
-                <td style={{ padding: '6px 6px', width: 120 }}>
-                  <input
-                    type="number" step="0.01" min="0"
-                    value={l.usd}
-                    onChange={e => updateLine(l.id, 'usd', e.target.value)}
-                    placeholder="0.00"
-                    style={{ width: '100%', textAlign: 'right', fontFamily: 'var(--font-mono)' }}
-                    disabled={l.name?.toLowerCase().includes('icms saída') || l.name?.toLowerCase().includes('iof')}
-                  />
+
+                {/* ── USD (fixo) — agora SEMPRE editável, inclusive IOF e ICMS Saída ── */}
+                <td style={{ padding: '6px 6px', width: 130 }}>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="number" step="0.01" min="0"
+                      value={l.usd}
+                      onChange={e => updateLine(l.id, 'usd', e.target.value)}
+                      placeholder={isAutoCalculated ? fmtUSD(valUSD).replace('$','') : '0.00'}
+                      style={{
+                        width: '100%',
+                        textAlign: 'right',
+                        fontFamily: 'var(--font-mono)',
+                        // Borda sutil para indicar que é editável mesmo sendo especial
+                        border: isAutoCalculated
+                          ? '1px dashed rgba(200,169,110,0.5)'
+                          : undefined,
+                        borderRadius: isAutoCalculated ? 4 : undefined,
+                      }}
+                      title={
+                        isIOFLine
+                          ? 'Deixe vazio para calcular 3.5% sobre o frete, ou digite um valor fixo'
+                          : isICMSSaidaLine
+                          ? 'Deixe vazio para calcular 17% sobre o Valor Agregado, ou digite um valor fixo'
+                          : undefined
+                      }
+                    />
+                    {/* Indicador visual quando está sendo calculado automaticamente */}
+                    {isAutoCalculated && (
+                      <span style={{
+                        position: 'absolute',
+                        right: 6,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        fontSize: 9,
+                        color: 'rgba(200,169,110,0.7)',
+                        pointerEvents: 'none',
+                        userSelect: 'none',
+                      }}>auto</span>
+                    )}
+                  </div>
                 </td>
+
+                {/* ── % — ICMS Saída agora também editável (igual ao IOF) ── */}
                 <td style={{ padding: '6px 6px', width: 80 }}>
                   <input
                     type="number" step="0.01" min="0"
@@ -169,6 +208,7 @@ export default function CostCalculator({
                     style={{ width: '100%', textAlign: 'right', fontFamily: 'var(--font-mono)' }}
                   />
                 </td>
+
                 <td style={{
                   padding: '6px 6px', textAlign: 'right',
                   fontFamily: 'var(--font-mono)', fontSize: 13,
@@ -191,8 +231,14 @@ export default function CostCalculator({
         </tbody>
       </table>
 
+      {/* Legenda */}
+      <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10, paddingLeft: 6 }}>
+        💡 Campos com borda tracejada e indicador <em>"auto"</em> calculam automaticamente pelo %.
+        Digite um valor em <strong>USD (fixo)</strong> para sobrescrever o cálculo.
+      </div>
+
       {/* Ações */}
-      <div style={{ display: 'flex', gap: 8, marginTop: 10, marginBottom: 24 }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 4, marginBottom: 24 }}>
         <button className="btn btn-secondary" onClick={() => addLine()}>+ Add line</button>
         <button className="btn btn-secondary btn-sm" onClick={clearAll} style={{ color: 'var(--text3)' }}>Clear all</button>
       </div>
